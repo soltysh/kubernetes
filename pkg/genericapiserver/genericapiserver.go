@@ -478,7 +478,7 @@ func (s *GenericAPIServer) init(c *Config) {
 	attributeGetter := apiserver.NewRequestAttributeGetter(s.RequestContextMapper, s.NewRequestInfoResolver())
 	handler = apiserver.WithAuthorizationCheck(handler, attributeGetter, s.authorizer)
 	if len(c.AuditLog) != 0 {
-		auditLog, err := os.OpenFile(c.AuditLog, os.O_APPEND|os.O_WRONLY, 0644)
+		auditLog, err := os.OpenFile(c.AuditLog, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			glog.Fatalf("Could not open audit log file: %v", err)
 		}
