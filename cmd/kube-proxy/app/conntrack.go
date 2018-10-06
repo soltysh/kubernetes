@@ -89,7 +89,10 @@ func (rct realConntracker) SetMax(ctx context.Context, max int) error {
 	}
 	// TODO: generify this and sysctl to a new sysfs.WriteInt()
 	logger.Info("Setting conntrack hashsize", "conntrackHashsize", max/4)
-	return writeIntStringFile("/sys/module/nf_conntrack/parameters/hashsize", max/4)
+	if err := writeIntStringFile("/sys/module/nf_conntrack/parameters/hashsize", max/4); err != nil {
+		logger.Error(err, "failed to set conntrack hashsize", "conntrackHashsize", max/4)
+	}
+	return nil
 }
 
 func (rct realConntracker) SetTCPEstablishedTimeout(ctx context.Context, seconds int) error {
