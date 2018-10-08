@@ -78,6 +78,9 @@ type SecureServingOptions struct {
 
 	// PermitAddressSharing controls if SO_REUSEADDR is used when binding the port.
 	PermitAddressSharing bool
+
+	// AdvertisePort allows overriding the default port used by the ap iserver
+	AdvertisePort int
 }
 
 type CertKey struct {
@@ -167,6 +170,7 @@ func (s *SecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 
 	fs.BoolVar(&s.DisableHTTP2Serving, "disable-http2-serving", s.DisableHTTP2Serving,
 		"If true, HTTP2 serving will be disabled [default=false]")
+	fs.IntVar(&s.AdvertisePort, "advertise-port", s.AdvertisePort, "The port that will be advertised as kubernetes endpoints")
 
 	fs.StringVar(&s.ServerCert.CertDirectory, "cert-dir", s.ServerCert.CertDirectory, ""+
 		"The directory where the TLS certs are located. "+
@@ -333,6 +337,8 @@ func (s *SecureServingOptions) ApplyTo(config **server.SecureServingInfo) error 
 		}
 	}
 	c.SNICerts = namedTLSCerts
+
+	c.AdvertisePort = s.AdvertisePort
 
 	return nil
 }
