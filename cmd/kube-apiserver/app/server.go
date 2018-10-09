@@ -83,6 +83,10 @@ import (
 	"k8s.io/kubernetes/pkg/serviceaccount"
 )
 
+var (
+	DefaultProxyDialerFn utilnet.DialFunc
+)
+
 // TODO: delete this check after insecure flags removed in v1.24
 func checkNonZeroInsecurePort(fs *pflag.FlagSet) error {
 	for _, name := range options.InsecurePortFlags {
@@ -188,7 +192,12 @@ func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) erro
 
 // CreateServerChain creates the apiservers connected via delegation.
 func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*aggregatorapiserver.APIAggregator, error) {
+	if DefaultProxyDialerFn != nil {
+		completedOptions.KubeletConfig.Dial = DefaultProxyDialerFn
+	}
+
 	kubeAPIServerConfig, serviceResolver, pluginInitializer, err := CreateKubeAPIServerConfig(completedOptions)
+
 	if err != nil {
 		return nil, err
 	}
