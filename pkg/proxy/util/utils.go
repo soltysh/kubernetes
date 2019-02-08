@@ -52,6 +52,8 @@ var (
 
 	// ErrNoAddresses indicates there are no addresses for the hostname
 	ErrNoAddresses = errors.New("no addresses for hostname")
+
+	DisableProxyHostnameCheck = false
 )
 
 // isValidEndpoint checks that the given host / port pair are valid endpoint
@@ -110,6 +112,10 @@ type Resolver interface {
 
 // IsProxyableHostname checks if the IP addresses for a given hostname are permitted to be proxied
 func IsProxyableHostname(ctx context.Context, resolv Resolver, hostname string) error {
+	if DisableProxyHostnameCheck {
+		return nil
+	}
+
 	resp, err := resolv.LookupIPAddr(ctx, hostname)
 	if err != nil {
 		return err
