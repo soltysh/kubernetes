@@ -29,6 +29,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/kubernetes/pkg/kubelet/types"
+
 	"github.com/spf13/cobra"
 
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -250,13 +252,15 @@ func CreateKubeAPIServerConfig(s completedServerRunOptions) (
 		return nil, nil, nil, err
 	}
 
+	all, _ := types.GetValidatedSources([]string{types.AllSource})
+
 	capabilities.Initialize(capabilities.Capabilities{
 		AllowPrivileged: s.AllowPrivileged,
 		// TODO(vmarmol): Implement support for HostNetworkSources.
 		PrivilegedSources: capabilities.PrivilegedSources{
-			HostNetworkSources: []string{},
-			HostPIDSources:     []string{},
-			HostIPCSources:     []string{},
+			HostNetworkSources: all,
+			HostPIDSources:     all,
+			HostIPCSources:     all,
 		},
 		PerConnectionBandwidthLimitBytesPerSec: s.MaxConnectionBytesPerSec,
 	})
