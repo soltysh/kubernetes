@@ -202,6 +202,7 @@ func Run(completeOptions completedServerRunOptions, stopCh <-chan struct{}) erro
 func CreateServerChain(completedOptions completedServerRunOptions, stopCh <-chan struct{}) (*aggregatorapiserver.APIAggregator, error) {
 	if DefaultProxyDialerFn != nil {
 		completedOptions.KubeletConfig.Dial = DefaultProxyDialerFn
+		completedOptions.KubeletConfig.Proxy = http.ProxyURL(nil)
 	}
 
 	kubeAPIServerConfig, serviceResolver, pluginInitializer, err := CreateKubeAPIServerConfig(completedOptions)
