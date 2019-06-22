@@ -147,6 +147,10 @@ func (c *Controller) Start() {
 		return
 	}
 
+	// Service definition is reconciled during first run to correct port and type per expectations.
+	if err := c.UpdateKubernetesService(true); err != nil {
+		klog.Errorf("Unable to perform initial Kubernetes service initialization: %v", err)
+	}
 	// Reconcile during first run removing itself until server is ready.
 	endpointPorts := createEndpointPortSpec(c.PublicServicePort, "https")
 	if err := c.EndpointReconciler.RemoveEndpoints(kubernetesServiceName, c.PublicIP, endpointPorts); err == nil {
