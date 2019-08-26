@@ -24,6 +24,7 @@ package main
 import (
 	"os"
 
+	"k8s.io/apiserver/pkg/server"
 	"k8s.io/component-base/cli"
 	_ "k8s.io/component-base/logs/json/register" // for JSON log format registration
 	_ "k8s.io/component-base/metrics/prometheus/restclient"
@@ -32,7 +33,7 @@ import (
 )
 
 func main() {
-	command := app.NewKubeletCommand()
+	command := app.NewKubeletCommand(server.SetupSignalContext())
 	code := cli.Run(command)
 	os.Exit(code)
 }
