@@ -29,6 +29,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"k8s.io/apiserver/pkg/server"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	_ "k8s.io/component-base/logs/json/register" // for JSON log format registration
@@ -38,7 +39,7 @@ import (
 )
 
 func main() {
-	command := app.NewKubeletCommand()
+	command := app.NewKubeletCommand(server.SetupSignalContext())
 
 	// kubelet uses a config file and does its own special
 	// parsing of flags and that config file. It initializes
