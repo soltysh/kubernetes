@@ -391,6 +391,7 @@ func (s componentStatusStorage) serversToValidate() map[string]componentstatus.S
 
 	for ix, cfg := range s.storageFactory.Configs() {
 		serversToValidate[fmt.Sprintf("etcd-%d", ix)] = &componentstatus.EtcdServer{Config: cfg}
+
 	}
 	return serversToValidate
 }
