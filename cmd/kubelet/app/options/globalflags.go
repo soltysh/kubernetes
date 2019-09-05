@@ -34,7 +34,6 @@ import (
 // We do this in order to prevent unwanted flags from leaking into the Kubelet's flagset.
 func AddGlobalFlags(fs *pflag.FlagSet) {
 	addCadvisorFlags(fs)
-	addCredentialProviderFlags(fs)
 	verflag.AddFlags(fs)
 	logs.AddFlags(fs, logs.SkipLoggingConfigurationFlags())
 }
