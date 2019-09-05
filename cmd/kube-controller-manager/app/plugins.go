@@ -32,7 +32,6 @@ import (
 	// Volume plugins
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/csi"
-	"k8s.io/kubernetes/pkg/volume/fc"
 	"k8s.io/kubernetes/pkg/volume/flexvolume"
 	"k8s.io/kubernetes/pkg/volume/hostpath"
 	"k8s.io/kubernetes/pkg/volume/iscsi"
@@ -56,7 +55,6 @@ func ProbeAttachableVolumePlugins(logger klog.Logger) ([]volume.VolumePlugin, er
 	if err != nil {
 		return allPlugins, err
 	}
-	allPlugins = append(allPlugins, fc.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, iscsi.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
 	return allPlugins, nil
@@ -77,7 +75,6 @@ func ProbeExpandableVolumePlugins(logger klog.Logger, config persistentvolumecon
 	if err != nil {
 		return allPlugins, err
 	}
-	allPlugins = append(allPlugins, fc.ProbeVolumePlugins()...)
 	return allPlugins, nil
 }
 
@@ -118,7 +115,6 @@ func ProbeControllerVolumePlugins(logger klog.Logger, cloud cloudprovider.Interf
 		klog.FlushAndExit(klog.ExitFlushTimeout, 1)
 	}
 	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(nfsConfig)...)
-
 	var err error
 	allPlugins, err = appendExpandableLegacyProviderVolumes(logger, allPlugins, utilfeature.DefaultFeatureGate)
 	if err != nil {
