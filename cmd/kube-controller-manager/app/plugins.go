@@ -32,9 +32,7 @@ import (
 	// Volume plugins
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/csi"
-	"k8s.io/kubernetes/pkg/volume/fc"
 	"k8s.io/kubernetes/pkg/volume/flexvolume"
-	"k8s.io/kubernetes/pkg/volume/glusterfs"
 	"k8s.io/kubernetes/pkg/volume/hostpath"
 	"k8s.io/kubernetes/pkg/volume/iscsi"
 	"k8s.io/kubernetes/pkg/volume/local"
@@ -57,7 +55,6 @@ func ProbeAttachableVolumePlugins() ([]volume.VolumePlugin, error) {
 	if err != nil {
 		return allPlugins, err
 	}
-	allPlugins = append(allPlugins, fc.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, iscsi.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, csi.ProbeVolumePlugins()...)
 	return allPlugins, nil
@@ -78,8 +75,6 @@ func ProbeExpandableVolumePlugins(config persistentvolumeconfig.VolumeConfigurat
 	if err != nil {
 		return allPlugins, err
 	}
-	allPlugins = append(allPlugins, glusterfs.ProbeVolumePlugins()...)
-	allPlugins = append(allPlugins, fc.ProbeVolumePlugins()...)
 	return allPlugins, nil
 }
 
@@ -118,8 +113,6 @@ func ProbeControllerVolumePlugins(cloud cloudprovider.Interface, config persiste
 		klog.Fatalf("Could not create NFS recycler pod from file %s: %+v", config.PersistentVolumeRecyclerConfiguration.PodTemplateFilePathNFS, err)
 	}
 	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(nfsConfig)...)
-	allPlugins = append(allPlugins, glusterfs.ProbeVolumePlugins()...)
-
 	var err error
 	allPlugins, err = appendExpandableLegacyProviderVolumes(allPlugins, utilfeature.DefaultFeatureGate)
 	if err != nil {
