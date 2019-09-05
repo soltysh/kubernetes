@@ -28,9 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/volume/csi"
 	"k8s.io/kubernetes/pkg/volume/downwardapi"
 	"k8s.io/kubernetes/pkg/volume/emptydir"
-	"k8s.io/kubernetes/pkg/volume/fc"
 	"k8s.io/kubernetes/pkg/volume/flexvolume"
-	"k8s.io/kubernetes/pkg/volume/git_repo"
 	"k8s.io/kubernetes/pkg/volume/hostpath"
 	"k8s.io/kubernetes/pkg/volume/image"
 	"k8s.io/kubernetes/pkg/volume/iscsi"
@@ -56,13 +54,11 @@ func ProbeVolumePlugins(featureGate featuregate.FeatureGate) ([]volume.VolumePlu
 		return allPlugins, err
 	}
 	allPlugins = append(allPlugins, emptydir.ProbeVolumePlugins()...)
-	allPlugins = append(allPlugins, git_repo.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, hostpath.ProbeVolumePlugins(volume.VolumeConfig{})...)
 	allPlugins = append(allPlugins, nfs.ProbeVolumePlugins(volume.VolumeConfig{})...)
 	allPlugins = append(allPlugins, secret.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, iscsi.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, downwardapi.ProbeVolumePlugins()...)
-	allPlugins = append(allPlugins, fc.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, configmap.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, projected.ProbeVolumePlugins()...)
 	allPlugins = append(allPlugins, local.ProbeVolumePlugins()...)
