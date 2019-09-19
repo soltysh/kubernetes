@@ -22,6 +22,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 
@@ -30,6 +31,7 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/server/egressselector"
@@ -135,6 +137,13 @@ cluster's shared state through which all other components interact.`,
 	return cmd
 }
 
+type startupConfig struct {
+	Handler       http.Handler
+	Authenticator authenticator.Request
+}
+
+var StartupConfig = make(chan startupConfig, 1)
+
 // Run runs the specified APIServer.  This should never exit.
 func Run(ctx context.Context, opts options.CompletedOptions, stopCh <-chan struct{}) error {
 	// To help debugging, immediately log version
@@ -183,6 +192,12 @@ func CreateServerChain(config CompletedConfig) (*aggregatorapiserver.APIAggregat
 		// we don't need special handling for innerStopCh because the aggregator server doesn't create any go routines
 		return nil, err
 	}
+
+	StartupConfig <- startupConfig{
+		Handler:       aggregatorServer.GenericAPIServer.Handler,
+		Authenticator: config.KubeAPIs.ControlPlane.Generic.Authentication.Authenticator,
+	}
+	close(StartupConfig)
 
 	return aggregatorServer, nil
 }
