@@ -133,6 +133,7 @@ func (f *ConfigFlags) toRawKubeConfigLoader() clientcmd.ClientConfig {
 
 	if f.KubeConfig != nil {
 		loadingRules.ExplicitPath = *f.KubeConfig
+		loadingRules.Precedence = []string{}
 	}
 
 	overrides := &clientcmd.ConfigOverrides{ClusterDefaults: clientcmd.ClusterDefaults}
