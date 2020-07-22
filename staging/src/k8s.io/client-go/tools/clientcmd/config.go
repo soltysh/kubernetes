@@ -83,14 +83,7 @@ func (o *PathOptions) GetEnvVarFiles() []string {
 }
 
 func (o *PathOptions) GetLoadingPrecedence() []string {
-	if o.IsExplicitFile() {
-		return []string{o.GetExplicitFile()}
-	}
-
-	if envVarFiles := o.GetEnvVarFiles(); len(envVarFiles) > 0 {
-		return envVarFiles
-	}
-	return []string{o.GlobalFile}
+	return o.LoadingRules.GetLoadingPrecedence()
 }
 
 func (o *PathOptions) GetStartingConfig() (*clientcmdapi.Config, error) {
