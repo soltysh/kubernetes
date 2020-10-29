@@ -862,7 +862,7 @@ func DefaultBuildHandlerChain(apiHandler http.Handler, c *Config) http.Handler {
 	if c.CompressionDisabledFunc != nil {
 		handler = genericapifilters.WithCompressionDisabled(handler, c.CompressionDisabledFunc)
 	}
-	handler = genericfilters.WithHTTPLogging(handler)
+	handler = genericfilters.WithHTTPLogging(handler, c.newIsTerminatingFunc())
 	if utilfeature.DefaultFeatureGate.Enabled(genericfeatures.APIServerTracing) {
 		handler = genericapifilters.WithTracing(handler, c.TracerProvider)
 	}
