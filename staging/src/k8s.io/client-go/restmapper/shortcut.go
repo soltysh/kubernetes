@@ -43,7 +43,11 @@ func NewShortcutExpander(delegate meta.RESTMapper, client discovery.DiscoveryInt
 
 // KindFor fulfills meta.RESTMapper
 func (e shortcutExpander) KindFor(resource schema.GroupVersionResource) (schema.GroupVersionKind, error) {
-	return e.RESTMapper.KindFor(e.expandResourceShortcut(resource))
+	gvk, err := e.RESTMapper.KindFor(e.expandResourceShortcut(resource))
+	if meta.IsNoMatchError(err) {
+		return e.RESTMapper.KindFor(e.expandResourceShortcut(resource))
+	}
+	return gvk, err
 }
 
 // KindsFor fulfills meta.RESTMapper
