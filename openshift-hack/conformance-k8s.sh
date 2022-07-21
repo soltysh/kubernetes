@@ -56,7 +56,7 @@ unschedulable="$( ( oc get nodes -o name -l 'node-role.kubernetes.io/master'; ) 
 # Execute Kubernetes prerequisites
 make WHAT=cmd/kubectl
 make WHAT=test/e2e/e2e.test
-make WHAT=vendor/github.com/onsi/ginkgo/ginkgo
+make WHAT=vendor/github.com/onsi/ginkgo/v2/ginkgo
 PATH="${OS_ROOT}/_output/local/bin/$( os::build::host_platform ):${PATH}"
 export PATH
 
@@ -89,7 +89,9 @@ TEST_SKIPS="\[Serial\]| session affinity timeout "
 
 # shellcheck disable=SC2086
 ginkgo \
-  -nodes 4 -noColor "-skip=${TEST_SKIPS}" '-focus=\[Conformance\]' \
+  --timeout="24h" \
+  --output-interceptor-mode=none \
+  -nodes 4 -no-color '-skip=\[Serial\]' '-focus=\[Conformance\]' \
   ${e2e_test} -- \
   -report-dir "${test_report_dir}" \
   -allowed-not-ready-nodes ${unschedulable} \
