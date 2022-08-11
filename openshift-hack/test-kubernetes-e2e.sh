@@ -82,7 +82,6 @@ ginkgo \
   --output-interceptor-mode=none \
   -nodes "${NODES}" -no-color ${KUBE_E2E_TEST_ARGS} \
   "$( which k8s-e2e.test )" -- \
-  -report-dir "${test_report_dir}" \
   -host "${SERVER}" \
   -allowed-not-ready-nodes ${unschedulable} \
   2>&1 | tee -a "${test_report_dir}/k8s-e2e.log"
