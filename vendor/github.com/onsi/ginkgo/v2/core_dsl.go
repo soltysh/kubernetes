@@ -685,3 +685,18 @@ func DeferCleanup(args ...interface{}) {
 	}
 	pushNode(internal.NewCleanupNode(fail, args...))
 }
+
+func AppendSpecText(test *internal.Spec, text string) {
+	test.AppendText(text)
+}
+
+func GetSuite() *internal.Suite {
+	return global.Suite
+}
+
+func GetSpecs() internal.Specs {
+	global.Suite.BuildTree()
+	tree := global.Suite.GetTree()
+	specs := internal.GenerateSpecsFromTreeRoot(tree)
+	return specs
+}

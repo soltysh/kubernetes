@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/onsi/ginkgo/v2/formatter"
@@ -50,7 +51,31 @@ func NewSuite() *Suite {
 	}
 }
 
+func (suite *Suite) WalkTests(fn func(testName string, test types.TestSpec)) {
+	specs := GenerateSpecsFromTreeRoot(suite.tree)
+	for _, spec := range specs {
+		fn(spec.Text(), spec)
+	}
+}
+
+func (suite *Suite) GetTree() *TreeNode {
+	return suite.tree
+}
+
+var (
+	builtTree     bool
+	buildTreeLock sync.Mutex
+)
+
 func (suite *Suite) BuildTree() error {
+	buildTreeLock.Lock()
+	defer buildTreeLock.Unlock()
+	if builtTree {
+		return nil
+	}
+	// technically we might return early w/ an error before finishing building the tree,
+	// but in such a situation, we're never going to get further with building the tree anyway.
+	builtTree = true
 	// During PhaseBuildTopLevel, the top level containers are stored in suite.topLevelCotainers and entered
 	// We now enter PhaseBuildTree where these top level containers are entered and added to the spec tree
 	suite.phase = PhaseBuildTree
