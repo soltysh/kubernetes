@@ -915,13 +915,13 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 
 	CSIMigration: {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.27
 
-	CSIMigrationAWS: {Default: true, PreRelease: featuregate.GA, LockToDefault: true},
+	CSIMigrationAWS: {Default: true, PreRelease: featuregate.GA, LockToDefault: false},
 
 	CSIMigrationAzureDisk: {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // On by default in 1.23 (requires Azure Disk CSI driver)
 
 	CSIMigrationAzureFile: {Default: true, PreRelease: featuregate.Beta}, // On by default in 1.24 (requires Azure File CSI driver)
 
-	CSIMigrationGCE: {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // GA in 1.25 (requires GCE PD CSI Driver)
+	CSIMigrationGCE: {Default: true, PreRelease: featuregate.GA, LockToDefault: false}, // GA in 1.25 (requires GCE PD CSI Driver)
 
 	CSIMigrationOpenStack: {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.26
 
