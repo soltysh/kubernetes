@@ -91,7 +91,7 @@ TEST_SKIPS="\[Serial\]| session affinity timeout "
 ginkgo \
   --timeout="24h" \
   --output-interceptor-mode=none \
-  -nodes 4 -no-color '-skip=\[Serial\]' '-focus=\[Conformance\]' \
+  -nodes 4 -no-color '-skip=${TEST_SKIPS}' '-focus=\[Conformance\]' \
   ${e2e_test} -- \
   -report-dir "${test_report_dir}" \
   -allowed-not-ready-nodes ${unschedulable} \
