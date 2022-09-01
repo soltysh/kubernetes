@@ -556,7 +556,9 @@ func AfterReadingAllFlags(t *TestContextType) {
 	}
 
 	if TestContext.ReportDir != "" {
-		ginkgo.ReportAfterSuite("Kubernetes e2e JUnit report", writeJUnitReport)
+		if ginkgo.GetSuite().InRunPhase() {
+			ginkgo.ReportAfterSuite("Kubernetes e2e JUnit report", writeJUnitReport)
+		}
 	}
 }
 
