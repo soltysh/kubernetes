@@ -542,3 +542,9 @@ func (nt NodeType) MarshalJSON() ([]byte, error) {
 func (nt NodeType) Is(nodeTypes NodeType) bool {
 	return nt&nodeTypes != 0
 }
+
+type TestSpec interface {
+	CodeLocations() []CodeLocation
+	Text() string
+	AppendText(text string)
+}

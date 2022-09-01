@@ -15,6 +15,14 @@ func (s Spec) SubjectID() uint {
 	return s.Nodes.FirstNodeWithType(types.NodeTypeIt).ID
 }
 
+func (s Spec) CodeLocations() []types.CodeLocation {
+	return s.Nodes.CodeLocations()
+}
+
+func (s Spec) AppendText(text string) {
+	s.Nodes[len(s.Nodes)-1].Text += text
+}
+
 func (s Spec) Text() string {
 	texts := []string{}
 	for i := range s.Nodes {
