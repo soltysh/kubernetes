@@ -337,7 +337,8 @@ var _ metrics.StableCollector = &nfacctMetricCollector{}
 func newNFAcctMetricCollector(counter string, description *metrics.Desc) *nfacctMetricCollector {
 	client, err := nfacct.New()
 	if err != nil {
-		klog.ErrorS(err, "failed to initialize nfacct client")
+		// https://github.com/kubernetes/kubernetes/issues/126
+		// klog.ErrorS(err, "failed to initialize nfacct client")
 		return nil
 	}
 	return &nfacctMetricCollector{
