@@ -42,6 +42,17 @@ type AdmissionOptions struct {
 	PluginNames []string
 }
 
+var AdmissionPlugins map[string]func(*admission.Plugins)
+
+func (a *AdmissionOptions) WithPlugins(plugins map[string]func(*admission.Plugins)) *AdmissionOptions {
+	for pluginName, register := range plugins {
+		a.GenericAdmission.RecommendedPluginOrder = append(a.GenericAdmission.RecommendedPluginOrder, pluginName)
+		a.GenericAdmission.DefaultOffPlugins = sets.NewString(AllOrderedPlugins...).Insert(pluginName)
+		register(a.GenericAdmission.Plugins)
+	}
+	return a
+}
+
 // NewAdmissionOptions creates a new instance of AdmissionOptions
 // Note:
 //
