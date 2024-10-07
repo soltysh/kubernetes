@@ -17,6 +17,9 @@ limitations under the License.
 package daemon
 
 import (
+	"fmt"
+	"math/rand"
+	"strings"
 	"testing"
 
 	apps "k8s.io/api/apps/v1"
@@ -24,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 )
 
 func TestDaemonSetUpdatesPods(t *testing.T) {
@@ -95,6 +99,294 @@ func TestDaemonSetUpdatesPods(t *testing.T) {
 		t.Error(err)
 	}
 	clearExpectations(t, manager, ds, podControl)
+}
+func TestDaemonSetUpdatesSaveOldHealthyPods(t *testing.T) {
+	ds := newDaemonSet("foo")
+	manager, podControl, _, err := newTestController(ds)
+	if err != nil {
+		t.Fatalf("error creating DaemonSets controller: %v", err)
+	}
+	addNodes(manager.nodeStore, 0, 20, nil)
+	err = manager.dsStore.Add(ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// expectSyncDaemonSets(t, manager, ds, podControl, 20, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 20, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	markPodsReady(podControl.podStore)
+
+	t.Logf("first update to get 10 old pods which should never be touched")
+	ds.Spec.Template.Spec.Containers[0].Image = "foo2/bar2"
+	ds.Spec.UpdateStrategy.Type = apps.RollingUpdateDaemonSetStrategyType
+	maxUnavailable := 10
+	intStr := intstr.FromInt(maxUnavailable)
+	ds.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateDaemonSet{MaxUnavailable: &intStr}
+	err = manager.dsStore.Update(ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, maxUnavailable, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, maxUnavailable, 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, maxUnavailable, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, maxUnavailable, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	clearExpectations(t, manager, ds, podControl)
+
+	// save the pods we want to maintain running
+	oldReadyPods := []string{}
+	for _, obj := range podControl.podStore.List() {
+		pod := obj.(*v1.Pod)
+		if podutil.IsPodReady(pod) {
+			oldReadyPods = append(oldReadyPods, pod.Name)
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		maxUnavailable := rand.Intn(10)
+		t.Logf("%d iteration, maxUnavailable=%d", i+1, maxUnavailable)
+		intStr = intstr.FromInt(maxUnavailable)
+		ds.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateDaemonSet{MaxUnavailable: &intStr}
+		ds.Spec.Template.Spec.Containers[0].Image = fmt.Sprintf("foo2/bar3-%d", i)
+		err = manager.dsStore.Update(ds)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// only the 10 unavailable pods will be allowed to be updated
+		clearExpectations(t, manager, ds, podControl)
+		// expectSyncDaemonSets(t, manager, ds, podControl, 0, 10, 0)
+		err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 10, 0)
+		if err != nil {
+			t.Error(err)
+		}
+
+		clearExpectations(t, manager, ds, podControl)
+		// expectSyncDaemonSets(t, manager, ds, podControl, 10, 0, 0)
+		err = syncAndValidateDaemonSets(manager, ds, podControl, 10, 0, 0)
+		if err != nil {
+			t.Error(err)
+		}
+
+		clearExpectations(t, manager, ds, podControl)
+		// expectSyncDaemonSets(t, manager, ds, podControl, 0, 0, 0)
+		err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 0, 0)
+		if err != nil {
+			t.Error(err)
+		}
+		clearExpectations(t, manager, ds, podControl)
+
+		// verify that the ready pods are never touched
+		readyPods := []string{}
+		t.Logf("looking for %s", strings.Join(oldReadyPods, ", "))
+		for _, obj := range podControl.podStore.List() {
+			pod := obj.(*v1.Pod)
+			if podutil.IsPodReady(pod) {
+				readyPods = append(readyPods, pod.Name)
+			}
+		}
+		for _, oldPod := range oldReadyPods {
+			if !slicesContains(readyPods, oldPod) {
+				t.Errorf("%s has changed in %d-th iteration", oldPod, i)
+			}
+		}
+	}
+
+	maxUnavailable = 11
+	intStr = intstr.FromInt(maxUnavailable)
+	ds.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateDaemonSet{MaxUnavailable: &intStr}
+	ds.Spec.Template.Spec.Containers[0].Image = "foo2/bar4"
+	err = manager.dsStore.Update(ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, maxUnavailable, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, maxUnavailable, 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, maxUnavailable, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, maxUnavailable, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	clearExpectations(t, manager, ds, podControl)
+
+	// verify that the ready pods are never touched
+	readyPods := []string{}
+	for _, obj := range podControl.podStore.List() {
+		pod := obj.(*v1.Pod)
+		if podutil.IsPodReady(pod) {
+			readyPods = append(readyPods, pod.Name)
+		}
+	}
+	if len(readyPods) != 9 {
+		t.Errorf("readyPods are different than expected, should be 9 but is %s", strings.Join(readyPods, ", "))
+	}
+}
+
+func slicesContains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+
+func TestDaemonSetUpdatesAllOldNotReadyPodsAndNewNotReadyPods(t *testing.T) {
+	ds := newDaemonSet("foo")
+	manager, podControl, _, err := newTestController(ds)
+	if err != nil {
+		t.Fatalf("error creating DaemonSets controller: %v", err)
+	}
+	addNodes(manager.nodeStore, 0, 100, nil)
+	err = manager.dsStore.Add(ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// expectSyncDaemonSets(t, manager, ds, podControl, 100, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 100, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	markPodsReady(podControl.podStore)
+	var hash1 string
+	// at this point we have 100 pods runing from daemonset, and we mark
+	// the controller has which will be used later on to fake old pods
+	for _, obj := range podControl.podStore.List() {
+		pod := obj.(*v1.Pod)
+		hash1 = pod.Labels[apps.ControllerRevisionHashLabelKey]
+		break
+	}
+
+	ds.Spec.Template.Spec.Containers[0].Image = "foo2/bar2"
+	ds.Spec.UpdateStrategy.Type = apps.RollingUpdateDaemonSetStrategyType
+	maxUnavailable := 10
+	intStr := intstr.FromInt(maxUnavailable)
+	ds.Spec.UpdateStrategy.RollingUpdate = &apps.RollingUpdateDaemonSet{MaxUnavailable: &intStr}
+	err = manager.dsStore.Update(ds)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// we need to iterate 10 times, since we allow 10 max unavailable, to reach 100 nodes rollout
+	for i := 0; i < 10; i++ {
+		clearExpectations(t, manager, ds, podControl)
+		// expectSyncDaemonSets(t, manager, ds, podControl, 0, maxUnavailable, 0)
+		err = syncAndValidateDaemonSets(manager, ds, podControl, 0, maxUnavailable, 0)
+		if err != nil {
+			t.Error(err)
+		}
+
+		clearExpectations(t, manager, ds, podControl)
+		// expectSyncDaemonSets(t, manager, ds, podControl, maxUnavailable, 0, 0)
+		err = syncAndValidateDaemonSets(manager, ds, podControl, maxUnavailable, 0, 0)
+		if err != nil {
+			t.Error(err)
+		}
+		// make sure to mark the pods ready, otherwise the followup rollouts will fail
+		markPodsReady(podControl.podStore)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	clearExpectations(t, manager, ds, podControl)
+
+	// to reach the following situation
+	// - maxUnavailable 10
+	// - 88 unavailable new pods
+	// - 2 unavailable old pods
+	// - 10 available old pods
+	oldUnavailablePods := []string{}
+	for i, obj := range podControl.podStore.List() {
+		pod := obj.(*v1.Pod)
+		// mark the latter 90 pods not ready
+		if i >= 10 {
+			condition := v1.PodCondition{Type: v1.PodReady, Status: v1.ConditionFalse}
+			podutil.UpdatePodCondition(&pod.Status, &condition)
+		}
+		// mark the first 12 pods with older hash
+		if i < 12 {
+			pod.Labels[apps.ControllerRevisionHashLabelKey] = hash1
+			// note down 2 not available old pods
+			if i >= 10 {
+				oldUnavailablePods = append(oldUnavailablePods, pod.Name)
+			}
+		}
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	t.Logf("expect 10 old pods deletion in 1st iteration")
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, 2, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 2, 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	t.Logf("expect 10 new pods creation in 2nd iteration")
+	// expectSyncDaemonSets(t, manager, ds, podControl, 2, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 2, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+
+	clearExpectations(t, manager, ds, podControl)
+	t.Logf("expect no modifications in 3rd iteration")
+	// expectSyncDaemonSets(t, manager, ds, podControl, 0, 0, 0)
+	err = syncAndValidateDaemonSets(manager, ds, podControl, 0, 0, 0)
+	if err != nil {
+		t.Error(err)
+	}
+	clearExpectations(t, manager, ds, podControl)
+
+	// check if oldUnavailablePods were replaced
+	t.Logf("Looking for old pods %s", strings.Join(oldUnavailablePods, ", "))
+	notUpdatedOldPods := []string{}
+	for _, obj := range podControl.podStore.List() {
+		pod := obj.(*v1.Pod)
+		for _, oldPod := range oldUnavailablePods {
+			if pod.Name == oldPod {
+				notUpdatedOldPods = append(notUpdatedOldPods, pod.Name)
+			}
+		}
+	}
+	if len(notUpdatedOldPods) > 0 {
+		t.Fatalf("found not updated old pods: %s", strings.Join(notUpdatedOldPods, ", "))
+	}
 }
 
 func TestDaemonSetUpdatesWhenNewPosIsNotReady(t *testing.T) {
