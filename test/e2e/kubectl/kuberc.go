@@ -39,7 +39,7 @@ import (
 )
 
 var kuberc = `
-apiVersion: kubectl.config.k8s.io/v1alpha1
+apiVersion: kubectl.config.k8s.io/v1beta1
 kind: Preference
 aliases:
 - name: getn
