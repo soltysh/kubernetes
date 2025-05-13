@@ -40,6 +40,7 @@ type Config struct {
 	// +optional
 	APIVersion string `json:"apiVersion,omitempty"`
 	// Preferences holds general information to be use for cli interactions
+	// Deprecated in v1.34 in favor of kuberc file (see https://kep.k8s.io/3104).
 	Preferences Preferences `json:"preferences"`
 	// Clusters is a map of referencable names to cluster configs
 	Clusters map[string]*Cluster `json:"clusters"`
@@ -55,6 +56,7 @@ type Config struct {
 }
 
 // IMPORTANT if you add fields to this struct, please update IsConfigEmpty()
+// Deprecated in v1.34 in favor of kuberc file (see https://kep.k8s.io/3104).
 type Preferences struct {
 	// +optional
 	Colors bool `json:"colors,omitempty"`
