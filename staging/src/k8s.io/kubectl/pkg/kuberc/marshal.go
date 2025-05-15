@@ -30,6 +30,7 @@ import (
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
 
 	"k8s.io/kubectl/pkg/config"
+	"k8s.io/kubectl/pkg/config/v1alpha1"
 )
 
 // decodePreference iterates over the yamls in kuberc file to find the supported kuberc version.
@@ -40,6 +41,12 @@ func decodePreference(kubercFile string) (*config.Preference, error) {
 		return nil, err
 	}
 
+	// olderVersions map holds valid preference contents in older, known versions.
+	// The current version priorities are:
+	// 1. v1beta1
+	// 2. v1alpha1
+	// When decoding versions, we always try to pick the latest known version.
+	olderVersions := make(map[string]*config.Preference)
 	attemptedItems := 0
 	reader := utilyaml.NewYAMLReader(bufio.NewReader(bytes.NewBuffer(kubercBytes)))
 	for {
@@ -87,14 +94,28 @@ func decodePreference(kubercFile string) (*config.Preference, error) {
 			continue
 		}
 
-		// we have a usable preferences to return
-		klog.V(5).Infof("kuberc: successfully decoded entry %d in %s", attemptedItems, kubercFile)
-		return preferences, strictDecodeErr
+		// check version priority
+		if gvk.GroupVersion() == v1alpha1.SchemeGroupVersion {
+			olderVersions[v1alpha1.SchemeGroupVersion.String()] = preferences
+			klog.V(5).Infof("kuberc: entry %d (%s) found, but looking if newer is available", attemptedItems, gvk.GroupVersion())
+			continue
+		}
 
+		// we have a usable preferences to return
+		klog.V(5).Infof("kuberc: using entry %d (%s) in %s", attemptedItems, gvk.GroupVersion(), kubercFile)
+		return preferences, strictDecodeErr
 	}
+
+	// return older version if we reach that far
+	if prefs, ok := olderVersions[v1alpha1.SchemeGroupVersion.String()]; ok {
+		klog.V(5).Infof("kuberc: using version %s in %s", v1alpha1.SchemeGroupVersion, kubercFile)
+		return prefs, nil
+	}
+
 	if attemptedItems > 0 {
 		return nil, fmt.Errorf("no valid preferences found in %s, use --v=5 to see details", kubercFile)
 	}
+
 	// empty doc
 	klog.V(5).Infof("kuberc: no preferences found in %s", kubercFile)
 	return nil, nil
