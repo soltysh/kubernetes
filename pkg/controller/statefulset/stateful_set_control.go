@@ -769,9 +769,24 @@ func updateStatefulSetAfterInvariantEstablished(ctx context.Context, ssc *defaul
 	}
 	metrics.UnavailableReplicas.WithLabelValues(set.Namespace, set.Name, podManagementPolicy).Set(float64(unavailablePods))
 
-	if unavailablePods >= maxUnavailable {
+	// For Parallel pod management, pods that are already unavailable AND on an old revision
+	// do not consume the maxUnavailable budget.
+	// For OrderedReady pod management this does not apply to preserve the existing
+	// sequential update behaviour.
+	effectiveUnavailable := unavailablePods
+	if set.Spec.PodManagementPolicy == apps.ParallelPodManagement {
+		unavailablePodsNeedingUpdate := 0
+		for target := len(replicas) - 1; target >= updateMin; target-- {
+			if getPodRevision(replicas[target]) != updateRevision.Name && isUnavailable(replicas[target], set.Spec.MinReadySeconds, now) {
+				unavailablePodsNeedingUpdate++
+			}
+		}
+		effectiveUnavailable = unavailablePods - unavailablePodsNeedingUpdate
+	}
+
+	if effectiveUnavailable >= maxUnavailable {
 		// log only when a true violation occurs.
-		if unavailablePods > maxUnavailable {
+		if effectiveUnavailable > maxUnavailable {
 			logger.V(4).Info("StatefulSet found unavailablePods, more than the allowed maxUnavailable",
 				"statefulSet", klog.KObj(set),
 				"unavailablePods", unavailablePods,
@@ -781,16 +796,14 @@ func updateStatefulSetAfterInvariantEstablished(ctx context.Context, ssc *defaul
 		return &status, nil
 	}
 
-	// Now we need to delete MaxUnavailable- unavailablePods
+	// Now we need to delete MaxUnavailable - effectiveUnavailable
 	// start deleting one by one starting from the highest ordinal first
-	podsToDelete := maxUnavailable - unavailablePods
+	podsToDelete := maxUnavailable - effectiveUnavailable
 
 	deletedPods := 0
 	for target := len(replicas) - 1; target >= updateMin && deletedPods < podsToDelete; target-- {
-
-		// delete the Pod if it is healthy and the revision does not match the target
+		// delete the Pod if it is not already terminating and the revision does not match the target
 		if getPodRevision(replicas[target]) != updateRevision.Name && !isTerminating(replicas[target]) {
-			// delete the Pod if it is healthy and the revision does not match the target
 			logger.V(2).Info("StatefulSet terminating Pod for update",
 				"statefulSet", klog.KObj(set),
 				"pod", klog.KObj(replicas[target]))
