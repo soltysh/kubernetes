@@ -769,15 +769,19 @@ func updateStatefulSetAfterInvariantEstablished(ctx context.Context, ssc *defaul
 	}
 	metrics.UnavailableReplicas.WithLabelValues(set.Namespace, set.Name, podManagementPolicy).Set(float64(unavailablePods))
 
-	// For Parallel pod management, pods that are already unavailable AND on an old revision
-	// do not consume the maxUnavailable budget.
-	// For OrderedReady pod management this does not apply to preserve the existing
-	// sequential update behaviour.
+	// For Parallel pod management, pods that are already unavailable (e.g. crashlooping)
+	// AND on an old revision do not consume the maxUnavailable budget, so the controller
+	// can still delete them to trigger a revision update.
+	// Terminating pods (DeletionTimestamp set) on the other hand are excluded,
+	// because they represent in-flight deletions initiated by a prior sync and
+	// must continue to count against the budget until they are fully removed.
 	effectiveUnavailable := unavailablePods
 	if set.Spec.PodManagementPolicy == apps.ParallelPodManagement {
 		unavailablePodsNeedingUpdate := 0
 		for target := len(replicas) - 1; target >= updateMin; target-- {
-			if getPodRevision(replicas[target]) != updateRevision.Name && isUnavailable(replicas[target], set.Spec.MinReadySeconds, now) {
+			if getPodRevision(replicas[target]) != updateRevision.Name &&
+				isUnavailable(replicas[target], set.Spec.MinReadySeconds, now) &&
+				!isTerminating(replicas[target]) {
 				unavailablePodsNeedingUpdate++
 			}
 		}

@@ -1355,7 +1355,7 @@ func TestStatefulSetControlRollingUpdateWithMaxUnavailableAndUnavailableStalePod
 			expectedPodsRemaining: 4,
 		},
 		{
-			name:                "Parallel/3 replicas, highest-ordinal pod terminating on old revision: next pod gets deleted",
+			name:                "Parallel/3 replicas, highest-ordinal pod terminating on old revision: budget consumed, next pod must NOT be deleted",
 			podManagementPolicy: apps.ParallelPodManagement,
 			replicas:            3,
 			maxUnavailable:      intstr.FromInt32(1),
@@ -1364,7 +1364,7 @@ func TestStatefulSetControlRollingUpdateWithMaxUnavailableAndUnavailableStalePod
 				_, err := spc.setPodTerminated(set, ordinal)
 				return err
 			},
-			expectedPodsRemaining: 2,
+			expectedPodsRemaining: 3,
 		},
 		{
 			name:                "OrderedReady/3 replicas, highest-ordinal pod terminating on old revision blocks update",
@@ -1373,6 +1373,22 @@ func TestStatefulSetControlRollingUpdateWithMaxUnavailableAndUnavailableStalePod
 			maxUnavailable:      intstr.FromInt32(1),
 			unavailableOrdinals: []int{2},
 			makeUnavailable: func(spc *fakeObjectManager, set *apps.StatefulSet, ordinal int) error {
+				_, err := spc.setPodTerminated(set, ordinal)
+				return err
+			},
+			expectedPodsRemaining: 3,
+		},
+		{
+			name:                "Parallel/5 replicas maxUnavailable=3, pod-4 terminating + pod-3 crashlooping: only 2 more pods should be deleted",
+			podManagementPolicy: apps.ParallelPodManagement,
+			replicas:            5,
+			maxUnavailable:      intstr.FromInt32(3),
+			unavailableOrdinals: []int{3, 4},
+			makeUnavailable: func(spc *fakeObjectManager, set *apps.StatefulSet, ordinal int) error {
+				if ordinal == 3 {
+					_, err := spc.setPodReadyCondition(set, ordinal, false)
+					return err
+				}
 				_, err := spc.setPodTerminated(set, ordinal)
 				return err
 			},
@@ -1405,7 +1421,7 @@ func TestStatefulSetControlRollingUpdateWithMaxUnavailableAndUnavailableStalePod
 			expectedPodsRemaining: 3,
 		},
 		{
-			name:                "Parallel/5 replicas, 1 pod unavailable(#3) + 1 pod terminating(#4) on old revision",
+			name:                "Parallel/5 replicas, pod-3 unavailable + pod-4 terminating on old revision, only 2 more pods should be deleted",
 			podManagementPolicy: apps.ParallelPodManagement,
 			replicas:            5,
 			maxUnavailable:      intstr.FromInt32(3),
@@ -1418,10 +1434,10 @@ func TestStatefulSetControlRollingUpdateWithMaxUnavailableAndUnavailableStalePod
 				_, err := spc.setPodTerminated(set, ordinal)
 				return err
 			},
-			expectedPodsRemaining: 2,
+			expectedPodsRemaining: 3,
 		},
 		{
-			name:                "Parallel/5 replicas, 1 pod terminating(#3) + 1 pod unavailable(#3) on old revision",
+			name:                "Parallel/5 replicas, pod-3 terminating + pod-4 unavailable on old revision, only 2 more pods should be deleted",
 			podManagementPolicy: apps.ParallelPodManagement,
 			replicas:            5,
 			maxUnavailable:      intstr.FromInt32(3),
@@ -1434,7 +1450,7 @@ func TestStatefulSetControlRollingUpdateWithMaxUnavailableAndUnavailableStalePod
 				_, err := spc.setPodReadyCondition(set, ordinal, false)
 				return err
 			},
-			expectedPodsRemaining: 2,
+			expectedPodsRemaining: 3,
 		},
 		{
 			name:                "OrderedReady/5 replicas, 1 pod unavailable(#3) + 1 pod terminating(#4) on old revision",
