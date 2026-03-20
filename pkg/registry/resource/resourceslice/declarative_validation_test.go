@@ -288,7 +288,7 @@ func TestDeclarativeValidateUpdate(t *testing.T) {
 					old:    mkResourceSliceWithDevices(),
 					update: mkResourceSliceWithDevices(tweakDeviceAttribute("test.io/empty", resource.DeviceAttribute{})),
 					expectedErrs: field.ErrorList{
-						field.Invalid(field.NewPath("spec", "devices").Index(0).Child("attributes").Key("test.io/empty"), "", "").WithOrigin("union").MarkAlpha(),
+						field.Invalid(field.NewPath("spec", "devices").Index(0).Child("attributes").Key("test.io/empty"), "", ""),
 					},
 				},
 				// spec.sharedCounters
